@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: query_radar_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-radar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-radar_local}
+      POSTGRES_DB: ${POSTGRES_DB:-loja}
+    ports:
+      - "${POSTGRES_PORT:-15437}:5432"
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+    command:
+      - postgres
+      # pg_stat_statements precisa ser carregado na inicialização do
+      # servidor: não dá para habilitar com o banco já no ar.
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.max=10000
+      # 'all' inclui as consultas dentro de funções e procedures. Em
+      # produção costuma ser 'top', que só registra o comando de mais alto
+      # nível e pesa menos.
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - pg_stat_statements.track_utility=off
+      - -c
+      - track_io_timing=on
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=8MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-radar} -d ${POSTGRES_DB:-loja}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  dados_postgres:
